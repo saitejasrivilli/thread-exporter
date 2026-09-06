@@ -1,16 +1,33 @@
+let lastProgress = { phase: 'idle', text: '' };
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'start-export') {
     runExport(msg.tabId, msg.formats).catch((e) => {
+      setProgress('error', 'Failed: ' + String(e && e.message || e));
       notify('Export failed', String(e && e.message || e));
     });
     sendResponse({ started: true });
+  } else if (msg && msg.type === 'scrape-progress') {
+    setProgress('scraping', msg.text);
+  } else if (msg && msg.type === 'get-progress') {
+    sendResponse(lastProgress);
   }
   return true;
 });
 
+function setProgress(phase, text) {
+  lastProgress = { phase, text };
+  chrome.runtime.sendMessage({ type: 'progress-update', phase, text }).catch(() => {});
+  const badge = phase === 'scraping' ? (text.match(/\d+%/) || [''])[0]
+    : phase === 'building' ? '...'
+    : phase === 'error' ? '!'
+    : '';
+  chrome.action.setBadgeText({ text: badge });
+  chrome.action.setBadgeBackgroundColor({ color: phase === 'error' ? '#c0392b' : '#4b8bbe' });
+}
+
 async function runExport(tabId, formats) {
-  await chrome.action.setBadgeText({ text: '...' });
-  await chrome.action.setBadgeBackgroundColor({ color: '#888' });
+  setProgress('scraping', 'Starting scroll capture...');
 
   const results = await chrome.scripting.executeScript({
     target: { tabId },
@@ -19,11 +36,12 @@ async function runExport(tabId, formats) {
 
   const data = results && results[0] && results[0].result;
   if (!data || !data.messages || !data.messages.length) {
-    await chrome.action.setBadgeText({ text: '' });
+    setProgress('idle', '');
     notify('Nothing found', 'No content could be captured from that page.');
     return;
   }
 
+  setProgress('building', 'Generating file(s)...');
   await ensureOffscreen();
   const response = await chrome.runtime.sendMessage({
     type: 'build-and-download',
@@ -31,11 +49,13 @@ async function runExport(tabId, formats) {
     formats,
   });
 
-  await chrome.action.setBadgeText({ text: '' });
+  setProgress('idle', '');
 
   if (response && response.ok) {
+    setProgress('done', 'Saved: ' + response.filenames.join(', '));
     notify('Export complete', 'Saved: ' + response.filenames.join(', '));
   } else {
+    setProgress('error', 'Failed: ' + ((response && response.error) || 'Unknown error'));
     notify('Export failed', (response && response.error) || 'Unknown error');
   }
 }
@@ -135,6 +155,15 @@ async function scrapeFullChat() {
     });
   }
 
+  function reportProgress(pct) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'scrape-progress',
+        text: `Scrolling & capturing... ${pct}% (${orderedLines.length} lines so far)`,
+      });
+    } catch (e) {}
+  }
+
   const step = Math.max(container.clientHeight * 0.6, 200);
   let stableRounds = 0;
   let pos = 0;
@@ -145,6 +174,10 @@ async function scrapeFullChat() {
       expandGuard++;
     }
     captureCurrentView();
+
+    const denom = Math.max(container.scrollHeight - container.clientHeight, 1);
+    const pct = Math.min(99, Math.round((container.scrollTop / denom) * 100));
+    reportProgress(pct);
 
     const atBottom = container.scrollTop + container.clientHeight >= container.scrollHeight - 5;
     if (atBottom) {
@@ -160,6 +193,7 @@ async function scrapeFullChat() {
   }
 
   captureCurrentView();
+  reportProgress(100);
 
   const title = getTitle();
   const fullText = orderedLines.join('\n');

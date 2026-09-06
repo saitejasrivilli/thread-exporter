@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thread Exporter",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Export the entire chat/article/page thread on any website to Markdown, Word, or PDF. Keeps running if you switch tabs.",
   "permissions": ["activeTab", "scripting", "downloads", "offscreen", "notifications"],
   "host_permissions": ["<all_urls>"],
