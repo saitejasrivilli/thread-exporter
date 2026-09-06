@@ -49,15 +49,23 @@ async function runExport(tabId, formats) {
     formats,
   });
 
-  setProgress('idle', '');
-
-  if (response && response.ok) {
-    setProgress('done', 'Saved: ' + response.filenames.join(', '));
-    notify('Export complete', 'Saved: ' + response.filenames.join(', '));
-  } else {
+  if (!response || !response.ok) {
     setProgress('error', 'Failed: ' + ((response && response.error) || 'Unknown error'));
     notify('Export failed', (response && response.error) || 'Unknown error');
+    return;
   }
+
+  const filenames = [];
+  for (const file of response.files) {
+    await new Promise((resolve) => {
+      chrome.downloads.download({ url: file.dataUrl, filename: file.filename, saveAs: false }, () => resolve());
+    });
+    filenames.push(file.filename);
+  }
+
+  setProgress('idle', '');
+  setProgress('done', 'Saved: ' + filenames.join(', '));
+  notify('Export complete', 'Saved: ' + filenames.join(', '));
 }
 
 async function ensureOffscreen() {

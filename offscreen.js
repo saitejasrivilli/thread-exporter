@@ -8,31 +8,37 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 async function handleBuild(data, formats) {
   try {
     const baseName = sanitize(data.title);
-    const filenames = [];
+    const files = [];
 
     for (const fmt of formats) {
+      let blob;
       if (fmt === 'md') {
-        await downloadBlob(new Blob([data.markdown], { type: 'text/markdown' }), baseName + '.md');
+        blob = new Blob([data.markdown], { type: 'text/markdown' });
       } else if (fmt === 'docx') {
-        const blob = await buildDocx(data.title, data.messages);
-        await downloadBlob(blob, baseName + '.docx');
+        blob = await buildDocx(data.title, data.messages);
       } else if (fmt === 'pdf') {
-        const blob = buildPdf(data.title, data.messages);
-        await downloadBlob(blob, baseName + '.pdf');
+        blob = buildPdf(data.title, data.messages);
       }
-      filenames.push(baseName + '.' + fmt);
+      if (!blob) continue;
+      const dataUrl = await blobToDataUrl(blob);
+      files.push({ dataUrl, filename: baseName + '.' + fmt });
     }
 
-    return { ok: true, filenames };
+    // chrome.downloads isn't available in offscreen documents — hand the
+    // built files back to the background service worker, which has full
+    // extension API access, to actually trigger the downloads.
+    return { ok: true, files };
   } catch (e) {
     return { ok: false, error: String(e && e.message || e) };
   }
 }
 
-function downloadBlob(blob, filename) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(blob);
-    chrome.downloads.download({ url, filename, saveAs: false }, () => resolve());
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
 }
 
