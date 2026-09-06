@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Thread Exporter",
+  "version": "1.0.0",
+  "description": "Export entire Claude.ai chat thread to a document named after the chat.",
+  "permissions": ["activeTab", "scripting", "downloads"],
+  "host_permissions": ["https://claude.ai/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Export Claude Thread"
+  }
+}
