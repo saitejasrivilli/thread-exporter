@@ -1,17 +1,18 @@
-# Claude Thread Exporter
+# Universal Chat Exporter
 
-Chrome extension that exports an entire Claude.ai chat thread — including long,
-virtualized conversations — to Markdown, Word (.docx), or PDF, named after the
-chat title.
+Chrome extension that exports an entire chat thread or long page — from
+Claude.ai, ChatGPT, or any other site — including long, virtualized
+conversations, to Markdown, Word (.docx), or PDF, named after the page title.
 
 ## Why
 
-Claude.ai's chat window virtualizes long threads: only messages near your
-current scroll position are actually in the DOM. A naive "select all + copy"
-only grabs what's currently rendered. This extension scrolls the entire
-thread from top to bottom, capturing text at every step (and expanding any
-collapsed "show more" / tool-call sections along the way) before compiling
-the full transcript.
+Many chat UIs (Claude.ai, ChatGPT, etc.) virtualize long threads: only
+messages near your current scroll position are actually in the DOM. A naive
+"select all + copy" only grabs what's currently rendered. This extension
+finds the page's main scrollable container and scrolls it from top to
+bottom, capturing text at every step (and expanding any collapsed "show
+more" / tool-call sections along the way) before compiling the full
+transcript — works on any site, not just Claude.ai.
 
 ## Install (unpacked, for personal use)
 
@@ -26,7 +27,7 @@ the full transcript.
 
 ## Usage
 
-1. Open any chat on `claude.ai`
+1. Open any chat or long page (Claude.ai, ChatGPT, or any other site)
 2. Click the extension icon in your Chrome toolbar
 3. Check the format(s) you want: **Markdown**, **Word (.docx)**, **PDF**
 4. Click **Export Thread**
@@ -37,10 +38,10 @@ the full transcript.
 
 ## How it works
 
-- `chrome.scripting.executeScript` injects a function into the active
-  claude.ai tab (no server, no external API calls)
-- Finds the chat's scrollable container, scrolls it from top to bottom in
-  viewport-sized steps
+- `chrome.scripting.executeScript` injects a function into the active tab
+  (no server, no external API calls, works on any domain)
+- Finds the page's largest scrollable container, scrolls it from top to
+  bottom in viewport-sized steps
 - At each step: clicks any visible "show more" / "read more" / collapsed
   tool-call ("Ran N commands...") elements to expand them, then captures
   `innerText`
@@ -57,9 +58,8 @@ that's already open and logged in.
 
 ## Limitations
 
-- Depends on Claude.ai's current DOM structure. If Claude.ai changes its
-  markup, the scroll-container detection or expand-button matching may need
-  updating.
+- Generic scroll/expand/capture heuristics work across sites but aren't
+  perfect for every DOM structure — some pages may need selector tweaks.
 - Very long threads take time to export since the whole conversation is
   scrolled through.
 - Captures visible rendered text only (no images/attachments).

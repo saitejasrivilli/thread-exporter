@@ -10,8 +10,8 @@ document.getElementById('export').addEventListener('click', async () => {
   statusEl.textContent = 'Scrolling full thread, this can take a while...';
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !tab.url || !tab.url.includes('claude.ai')) {
-    statusEl.textContent = 'Open a claude.ai chat tab first.';
+  if (!tab || !tab.url || !/^https?:\/\//.test(tab.url)) {
+    statusEl.textContent = 'Open a regular web page tab first.';
     return;
   }
 
@@ -131,13 +131,17 @@ async function scrapeFullChat() {
   const expandPattern = /show more|read more|expand|see more|view more|ran \d+ command|viewed \d+ file|viewed a file|read a file|searched the web|and \d+ more tool/i;
 
   function getTitle() {
-    const active = document.querySelector('[data-testid="chat-menu-item"][aria-current="page"], nav a[aria-current="page"]');
+    // Site-specific "active chat item" selectors (best signal when present).
+    const active = document.querySelector(
+      '[data-testid="chat-menu-item"][aria-current="page"], nav a[aria-current="page"], [aria-current="page"]'
+    );
     if (active) {
       const t = active.textContent.trim();
       if (t) return t;
     }
-    const docTitle = document.title.replace(/\s*[-|]\s*Claude.*$/i, '').trim();
-    return docTitle || 'claude-chat';
+    // Generic fallback: page <title>, stripped of common "- SiteName" suffixes.
+    const docTitle = document.title.replace(/\s*[-|–]\s*[^-|–]*$/, '').trim();
+    return docTitle || document.title.trim() || 'exported-page';
   }
 
   function findScrollContainer() {
