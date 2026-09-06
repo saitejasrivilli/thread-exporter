@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Universal Chat Exporter",
-  "version": "2.0.0",
-  "description": "Export the entire chat/article/page thread on any website to Markdown, Word, or PDF.",
-  "permissions": ["activeTab", "scripting", "downloads"],
+  "name": "Thread Exporter",
+  "version": "3.0.0",
+  "description": "Export the entire chat/article/page thread on any website to Markdown, Word, or PDF. Keeps running if you switch tabs.",
+  "permissions": ["activeTab", "scripting", "downloads", "offscreen", "notifications"],
   "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Export Page/Thread"
